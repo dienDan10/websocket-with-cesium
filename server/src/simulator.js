@@ -34,14 +34,12 @@ export class Simulator {
     start() {
         if (this.movementTimer) return; // đã chạy rồi
 
-        console.log('[Simulator] Scenario started');
+        console.log('[Simulator] Scenario started', new Date().toISOString());
 
         // Movement loop
         this.movementTimer = setInterval(() => {
             const updates = buildMovementUpdates(this.positions);
-            for (const msg of updates) {
-                this.broadcast(msg);
-            }
+            this.broadcast(updates);
         }, process.env.MOVEMENT_INTERVAL_MS);
 
         // Thêm unit mới sau 15 giây
@@ -55,7 +53,11 @@ export class Simulator {
         this.removeTimer = setTimeout(() => {
             const msg = buildRemoveEntity();
             this.broadcast(msg);
-            console.log(`[Simulator] Removed entity: ${msg.id}`);
+            delete this.positions[msg.id];
+            console.log(
+                `[Simulator] Removed entity: ${msg.id}`,
+                new Date().toISOString(),
+            );
         }, process.env.REMOVE_ENTITY_AFTER_MS);
     }
 
