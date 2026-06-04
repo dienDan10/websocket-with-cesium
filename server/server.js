@@ -1,30 +1,48 @@
 import { WebSocketServer, WebSocket } from 'ws';
+import dotenv from 'dotenv';
+import { Simulator } from './src/simulator.js';
+
+dotenv.config();
 
 const wss = new WebSocketServer({
-    port: 8080,
+    port: process.env.PORT,
 });
 
+function broadcast(message) {
+    const data = JSON.stringify(message);
+
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(data);
+        }
+    });
+}
+
+const simulator = new Simulator(broadcast);
+
 // Connection Event
-wss.on('connection', (socket, request) => {
-    const ip = request.socket.remoteAddress;
+wss.on('connection', (socket) => {
+    //const ip = request.socket.remoteAddress;
+    console.log(`[Server] Client connected (total: ${wss.clients.size})`);
 
-    socket.on('message', (rawData) => {
-        console.log({ rawData });
-        const message = rawData.toString();
+    simulator.sendSnapshot(socket);
 
-        wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN)
-                client.send(`Server broadcast: ${message}`);
-        });
+    simulator.start();
+
+    socket.on('close', () => {
+        console.log(
+            `[Server] Client disconnected (total: ${wss.clients.size})`,
+        );
+
+        // Dừng kịch bản khi không còn client nào
+        if (wss.clients.size === 0) {
+            simulator.stop();
+        }
     });
 
     socket.on('error', (err) => {
-        console.error(`Error: ${err.message}: ${ip}`);
-    });
-
-    socket.on('close', () => {
-        console.log('Client Disconnected');
+        console.error('[Server] WebSocket error:', err.message);
     });
 });
 
-console.log('WebSocket server is live at: ws://localhost:8080');
+console.log(`WebSocket server is live at: ws://localhost:${process.env.PORT}`);
