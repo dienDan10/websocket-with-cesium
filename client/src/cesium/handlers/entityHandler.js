@@ -3,24 +3,23 @@ import {
     updateEntity,
     removeEntity,
     clearEntities,
+    updateEntityStatus,
 } from '../entityManager';
 
-export function handleEntityAdd(message) {
-    addEntity(message.id, message.kind, message.payload);
+export function handleEntityAdd(payload) {
+    payload.forEach((item) => addEntity(item));
 }
 
-export function handleEntityAddBulk(message) {
-    message.payload.forEach((item) => {
-        addEntity(item.id, item.kind, item);
-    });
+export function handleEntityUpdatePosition(payload) {
+    updateEntity(payload);
 }
 
-export function handleEntityUpdatePosition(message) {
-    updateEntity(message.payload);
+export function handleEntityUpdateUnitStatus(payload) {
+    updateEntityStatus(payload);
 }
 
-export function handleEntityRemove(message) {
-    removeEntity(message.id);
+export function handleEntityRemove(payload) {
+    removeEntity(payload.id);
 }
 
 export function handleEntityClear() {

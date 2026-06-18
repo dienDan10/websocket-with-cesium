@@ -18,6 +18,7 @@ export function initViewer(containerId) {
         timeline: false,
         fullscreenButton: false,
         //baseLayer: false,
+        terrain: Cesium.Terrain.fromWorldTerrain(),
     });
 
     _viewer.cesiumWidget.creditContainer.style.display = 'none';

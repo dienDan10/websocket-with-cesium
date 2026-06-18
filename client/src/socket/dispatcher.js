@@ -1,28 +1,27 @@
 import {
     handleEntityAdd,
-    handleEntityAddBulk,
     handleEntityUpdatePosition,
     handleEntityRemove,
-    handleEntityClear,
+    handleEntityUpdateUnitStatus,
 } from '../cesium/handlers/entityHandler';
-import { handleFlyTo, handleSetCamera } from '../cesium/handlers/cameraHandler';
-import { clearEntities } from '../cesium/entityManager';
+import { handleInitBoundary } from '../cesium/handlers/aoBoundary';
 
 const handlers = {
-    'ENTITY.ADD': (msg) => handleEntityAdd(msg),
-    'ENTITY.ADD_BULK': (msg) => handleEntityAddBulk(msg),
-    'ENTITY.UPDATE.POSITION': (msg) => handleEntityUpdatePosition(msg),
-    'ENTITY.REMOVE': (msg) => handleEntityRemove(msg),
-    'ENTITY.CLEAR': () => handleEntityClear(),
-    'CAMERA.FLY_TO': (msg) => handleFlyTo(msg.payload),
-    'CAMERA.SET': (msg) => handleSetCamera(msg.payload),
-    'SCENE.CLEAR_ALL': () => clearEntities(),
+    INIT: (payload) => {
+        handleInitBoundary(payload.ao_boundary);
+    },
+    'ENTITY.ADD': (payload) => handleEntityAdd(payload),
+    'ENTITY.UPDATE.POSITION': (payload) => handleEntityUpdatePosition(payload),
+    'ENTITY.UPDATE.UNIT_TYPE': (payload) =>
+        handleEntityUpdateUnitStatus(payload),
+    'ENTITY.REMOVE': (payload) => handleEntityRemove(payload),
 };
 
 export function dispatch(message) {
+    console.log(message);
     const handler = handlers[message.type];
     if (handler) {
-        handler(message);
+        handler(message.payload);
     } else {
         console.warn('Unknown message type:', message.type);
     }

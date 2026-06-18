@@ -4,8 +4,9 @@ import { getViewer } from './viewer';
 
 const _entities = new Map(); // Map<id, entity>
 
-export function addEntity(id, kind, data) {
+export function addEntity(data) {
     const viewer = getViewer();
+    const { id, kind } = data;
 
     if (viewer.entities.getById(id)) {
         console.warn(`Entity ${id} đã tồn tại — bỏ qua`);
@@ -16,13 +17,15 @@ export function addEntity(id, kind, data) {
         _addPointUnit(viewer, id, data);
     } else if (kind === 'zone_unit') {
         _addZoneUnit(viewer, id, data);
+    } else if (kind === 'polyline_unit') {
+        _addPolylineUnit(viewer, id, data);
     } else {
         console.warn(`Unknown kind: ${kind}`);
     }
 }
 
 function _addPointUnit(viewer, id, data) {
-    const { position, faction, name } = data;
+    const { position, faction, name, coverage_radius } = data;
 
     const entity = viewer.entities.add({
         id,
@@ -51,6 +54,18 @@ function _addPointUnit(viewer, id, data) {
                 500000,
             ),
         },
+        ...(coverage_radius > 0
+            ? {
+                  ellipse: {
+                      semiMajorAxis: coverage_radius,
+                      semiMinorAxis: coverage_radius,
+                      material: Cesium.Color.fromCssColorString(
+                          faction?.color ?? '#ffffff',
+                      ).withAlpha(0.25),
+                      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                  },
+              }
+            : {}),
     });
 
     _entities.set(id, entity);
@@ -92,8 +107,26 @@ function _addZoneUnit(viewer, id, data) {
     _entities.set(id, entity);
 }
 
+function _addPolylineUnit(viewer, id, data) {
+    const { points, faction } = data;
+    const routes = points.flatMap(({ lon, lat, alt }) => [lon, lat, alt ?? 0]);
+    const routeEntity = viewer.entities.add({
+        id: id,
+        polyline: {
+            positions: Cesium.Cartesian3.fromDegreesArrayHeights(routes),
+            width: 4, // Độ rộng đường (pixel)
+            material: Cesium.Color.fromCssColorString(
+                faction?.color ?? '#ffffff',
+            ), // Màu theo faction
+            clampToGround: false, // Không bám sát mặt đất để dễ nhìn
+        },
+    });
+
+    _entities.set(id, routeEntity);
+}
+
 export function updateEntity(payload) {
-    payload.forEach(({ id, position }) => {
+    payload.forEach(({ id, position, heading, speed }) => {
         const entity = _entities.get(id);
         if (!entity) {
             console.warn(`Entity ${id} không tồn tại — bỏ qua updateEntity`);
@@ -103,7 +136,22 @@ export function updateEntity(payload) {
             const { lon, lat, alt = 0 } = position;
             entity.position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
         }
+        if (heading) {
+            entity.heading = heading;
+        }
+        if (speed) {
+            entity.speed = speed;
+        }
     });
+}
+
+export function updateEntityStatus(payload) {
+    for (const { id } of payload) {
+        const entity = _entities.get(id);
+        if (!entity) continue;
+
+        entity.billboard.color = Cesium.Color.WHITE.withAlpha(0.3);
+    }
 }
 
 export function removeEntity(id) {

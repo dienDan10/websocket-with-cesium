@@ -2,6 +2,30 @@ import { useStore } from '../store';
 import { dispatch } from './dispatcher';
 
 let _socket = null;
+let _retryTimer = null;
+let _shouldReconnect = true;
+
+function clearRetryTimer() {
+    if (_retryTimer) {
+        clearTimeout(_retryTimer);
+        _retryTimer = null;
+    }
+}
+
+// khởi chạy một timer tự reconnect khi không kết nối được hoặc mất
+// kết nối tới server
+function scheduleReconnect(url) {
+    if (!_shouldReconnect || _retryTimer) {
+        return;
+    }
+
+    const delay = 3000 + Math.floor(Math.random() * 2000);
+
+    _retryTimer = setTimeout(() => {
+        _retryTimer = null;
+        connectSocket(url);
+    }, delay);
+}
 
 export function connectSocket(url) {
     if (_socket) {
@@ -9,11 +33,15 @@ export function connectSocket(url) {
         return;
     }
 
-    useStore.getState().setConnectionStatus('connecting');
+    // đặt lại cơ chế reconnect khi gọi connectSocket
+    _shouldReconnect = true;
+    clearRetryTimer();
 
+    useStore.getState().setConnectionStatus('connecting');
     _socket = new WebSocket(url);
 
     _socket.onopen = () => {
+        clearRetryTimer();
         useStore.getState().setConnectionStatus('connected');
     };
 
@@ -33,10 +61,17 @@ export function connectSocket(url) {
     _socket.onclose = () => {
         useStore.getState().setConnectionStatus('disconnected');
         _socket = null;
+        console.log('Socket disconnected');
+        if (_shouldReconnect) {
+            scheduleReconnect(url);
+        }
     };
 }
 
 export function disconnectSocket() {
+    _shouldReconnect = false;
+    clearRetryTimer();
+
     if (_socket) {
         _socket.close();
         _socket = null;

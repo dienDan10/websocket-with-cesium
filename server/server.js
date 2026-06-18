@@ -1,48 +1,38 @@
-import { WebSocketServer, WebSocket } from 'ws';
-import dotenv from 'dotenv';
-import { Simulator } from './src/simulator.js';
+import express from 'express';
+import http from 'http';
+import { CONFIG } from './config.js';
+import { MapSocket } from './socket/mapSocket.js';
+import { ScenarioEngine } from './engine/scenarioEngine.js';
 
-dotenv.config();
+const app = express();
+app.use('/icons', express.static('./icons'));
 
-const wss = new WebSocketServer({
-    port: process.env.PORT,
+const httpServer = http.createServer(app);
+
+const mapSocket = new MapSocket();
+const engine = new ScenarioEngine();
+
+// Engine phát message → broadcast cho mọi client đang connect
+engine.on('message', (message) => {
+    mapSocket.broadcast(message);
 });
 
-function broadcast(message) {
-    const data = JSON.stringify(message);
-
-    wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(data);
-        }
-    });
-}
-
-const simulator = new Simulator(broadcast);
-
-// Connection Event
-wss.on('connection', (socket) => {
-    //const ip = request.socket.remoteAddress;
-    console.log(`[Server] Client connected (total: ${wss.clients.size})`);
-
-    simulator.sendSnapshot(socket);
-
-    simulator.start();
-
-    socket.on('close', () => {
-        console.log(
-            `[Server] Client disconnected (total: ${wss.clients.size})`,
-        );
-
-        // Dừng kịch bản khi không còn client nào
-        if (wss.clients.size === 0) {
-            simulator.stop();
-        }
-    });
-
-    socket.on('error', (err) => {
-        console.error('[Server] WebSocket error:', err.message);
-    });
+// Client gửi lệnh → map sang action tương ứng trên engine.
+// Đây là namespace riêng cho dev/demo tool — KHÔNG nằm trong protocol_v2.md chính thức,
+// vì Hub thật không nhận lệnh kiểu này từ Cesium client.
+mapSocket.on('command', (message) => {
+    switch (message.type) {
+        case 'COMMAND.LOAD_SCENARIO':
+            console.log('[server] nhận COMMAND.LOAD_SCENARIO');
+            engine.loadScenario();
+            break;
+        case 'COMMAND.START_SIMULATION':
+            console.log('[server] nhận COMMAND.START_SIMULATION');
+            engine.startSimulation();
+            break;
+        default:
+            console.warn('[server] command không xác định:', message.type);
+    }
 });
 
-console.log(`WebSocket server is live at: ws://localhost:${process.env.PORT}`);
+mapSocket.start(httpServer, CONFIG.PORT);
