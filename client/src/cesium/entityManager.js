@@ -3,6 +3,11 @@
 import { getViewer } from './viewer';
 
 const _entities = new Map(); // Map<id, entity>
+const _metadata = new Map(); // Map<id, { kind, faction, name, ... }>
+
+export function getAllEntities() {
+    return _metadata; // trả về Map<id, { lon, lat, faction, kind }>
+}
 
 export function addEntity(data) {
     const viewer = getViewer();
@@ -61,7 +66,7 @@ function _addPointUnit(viewer, id, data) {
                       semiMinorAxis: coverage_radius,
                       material: Cesium.Color.fromCssColorString(
                           faction?.color ?? '#ffffff',
-                      ).withAlpha(0.25),
+                      ).withAlpha(0.15),
                       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
                   },
               }
@@ -69,6 +74,12 @@ function _addPointUnit(viewer, id, data) {
     });
 
     _entities.set(id, entity);
+    _metadata.set(id, {
+        kind: 'point_unit',
+        lon: position.lon,
+        lat: position.lat,
+        faction,
+    });
 }
 
 function _buildColoredDot(hexColor) {
@@ -135,6 +146,11 @@ export function updateEntity(payload) {
         if (position) {
             const { lon, lat, alt = 0 } = position;
             entity.position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+            const meta = _metadata.get(id);
+            if (meta) {
+                meta.lon = lon;
+                meta.lat = lat;
+            }
         }
         if (heading) {
             entity.heading = heading;
@@ -156,10 +172,12 @@ export function updateEntityStatus(payload) {
 
 export function removeEntity(id) {
     _entities.delete(id);
+    _metadata.delete(id);
     getViewer().entities.removeById(id);
 }
 
 export function clearEntities() {
     _entities.clear();
+    _metadata.clear();
     getViewer().entities.removeAll();
 }

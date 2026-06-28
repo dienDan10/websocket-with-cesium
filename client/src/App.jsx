@@ -3,6 +3,9 @@ import { initViewer } from './cesium/viewer.js';
 import { connectSocket, sendMessage } from './socket/socket.js';
 import { CONFIG } from './config.js';
 import { handleEntityClear } from './cesium/handlers/entityHandler.js';
+import Minimap from './components/overlay/minimap/Minimap.jsx';
+
+Cesium.Ion.defaultAccessToken = CONFIG.CESIUM_ION_ACCESS_TOKEN;
 
 function App() {
     useEffect(() => {
@@ -57,6 +60,7 @@ function App() {
                 id="cesiumContainer"
                 style={{ width: '100%', height: '100%' }}
             />
+            <Minimap />
         </div>
     );
 }

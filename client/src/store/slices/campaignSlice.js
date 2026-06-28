@@ -2,11 +2,10 @@ export const createCampaignSlice = (set) => ({
     campaign: {
         id: null,
         name: null,
-        factions: {}, // { [id]: { name, color } }
-        unitTypes: {}, // { [id]: { name } }
     },
-    setCampaign: (data) =>
+    aoBoundary: null,
+    setAoBoundary: (boundary) =>
         set((state) => {
-            state.campaign = { ...state.campaign, ...data };
+            state.aoBoundary = boundary;
         }),
 });
